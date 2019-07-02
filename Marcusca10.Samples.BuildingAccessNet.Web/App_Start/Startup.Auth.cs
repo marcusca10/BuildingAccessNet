@@ -6,6 +6,8 @@ using Microsoft.Owin.Security.Cookies;
 using Microsoft.Owin.Security.Google;
 using Owin;
 using Marcusca10.Samples.BuildingAccessNet.Web.Models;
+using Microsoft.Owin.Security.WsFederation;
+using System.Collections.Generic;
 
 namespace Marcusca10.Samples.BuildingAccessNet.Web
 {
@@ -45,24 +47,29 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web
             // This is similar to the RememberMe option when you log in.
             app.UseTwoFactorRememberBrowserCookie(DefaultAuthenticationTypes.TwoFactorRememberBrowserCookie);
 
-            // Uncomment the following lines to enable logging in with third party login providers
-            //app.UseMicrosoftAccountAuthentication(
-            //    clientId: "",
-            //    clientSecret: "");
 
-            //app.UseTwitterAuthentication(
-            //   consumerKey: "",
-            //   consumerSecret: "");
 
-            //app.UseFacebookAuthentication(
-            //   appId: "",
-            //   appSecret: "");
 
-            //app.UseGoogleAuthentication(new GoogleOAuth2AuthenticationOptions()
-            //{
-            //    ClientId = "",
-            //    ClientSecret = ""
-            //});
+            // Get list of whitelisted tenants
+            using (var db = new ApplicationDbContext())
+            {
+                var tenants = db.Tenants;
+
+                // Enable login to multiple WS-Fed providers
+                foreach (TenantModel tenant in tenants)
+                {
+                    app.UseWsFederationAuthentication(new WsFederationAuthenticationOptions
+                    {
+                        AuthenticationType = tenant.Name,
+                        Caption = tenant.Caption,
+                        //SignInAsAuthenticationType = signInAsType,
+                        CallbackPath = new PathString("/signin-" + tenant.Name),
+
+                        MetadataAddress = tenant.MetadataAddress,
+                        Wtrealm = tenant.Realm
+                    });
+                };
+            }
         }
     }
 }
