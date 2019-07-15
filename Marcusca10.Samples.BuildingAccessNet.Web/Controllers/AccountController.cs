@@ -9,6 +9,7 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using Marcusca10.Samples.BuildingAccessNet.Web.Models;
+using System.Web.UI.HtmlControls;
 
 namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
 {
@@ -70,8 +71,23 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
+                // Test for registered email address suffix for redirection
+                if (model != null)
+                {
+                    string mailSuffix = model.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '_');
+                    var loginProviders = HttpContext.GetOwinContext().Authentication.GetExternalAuthenticationTypes();
+                    var loginProvider = loginProviders.Where(item => item.Properties["AuthenticationType"].ToString() == mailSuffix);
+
+
+                    if (loginProvider.Count() > 0)
+                    {
+                        return ExternalLogin(mailSuffix, returnUrl);
+                    }
+                }
+
                 return View(model);
             }
+
 
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, change to shouldLockout: true
