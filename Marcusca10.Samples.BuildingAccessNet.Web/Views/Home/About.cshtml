@@ -1,7 +1,37 @@
-﻿@{
+﻿@model IEnumerable < System.Security.Claims.Claim >
+@{
     ViewBag.Title = "About";
 }
 <h2>@ViewBag.Title.</h2>
 <h3>@ViewBag.Message</h3>
 
 <p>Use this area to provide additional information.</p>
+
+@if (Model.Count() > 1)
+{
+    <div class="table-responsive">
+        <table class="table table-condensed table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">Type</th>
+                    <th scope="col">Value</th>
+                    <th scope="col">Issuer</th>
+                    <th scope="col">OriginalIssuer</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                @foreach (var claim in Model)
+                {
+                    <tr>
+                        <td>@claim.Type</td>
+                        <td>@claim.Value</td>
+                        <td>@claim.Issuer</td>
+                        <td>@claim.OriginalIssuer</td>
+                    </tr>
+                }
+
+            </tbody>
+        </table>
+    </div>
+}

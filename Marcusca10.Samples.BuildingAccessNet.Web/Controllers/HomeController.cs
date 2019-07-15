@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Web;
 using System.Web.Mvc;
 
@@ -17,7 +18,8 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         {
             ViewBag.Message = "Your application description page.";
 
-            return View();
+            var identity = (ClaimsIdentity)User.Identity;
+            return View(identity.Claims);
         }
 
         public ActionResult Contact()
