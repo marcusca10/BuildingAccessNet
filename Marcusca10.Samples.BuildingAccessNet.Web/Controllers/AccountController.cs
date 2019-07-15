@@ -9,6 +9,7 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using Marcusca10.Samples.BuildingAccessNet.Web.Models;
+using System.Web.UI.HtmlControls;
 
 namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
 {
@@ -70,8 +71,23 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
+                // Test for registered email address suffix for redirection
+                if (model != null)
+                {
+                    string mailSuffix = model.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '_');
+                    var loginProviders = HttpContext.GetOwinContext().Authentication.GetExternalAuthenticationTypes();
+                    var loginProvider = loginProviders.Where(item => item.Properties["AuthenticationType"].ToString() == mailSuffix);
+
+
+                    if (loginProvider.Count() > 0)
+                    {
+                        return ExternalLogin(mailSuffix, returnUrl);
+                    }
+                }
+
                 return View(model);
             }
+
 
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, change to shouldLockout: true
@@ -134,100 +150,104 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             }
         }
 
-        //
-        // GET: /Account/Register
-        [AllowAnonymous]
-        public ActionResult Register()
-        {
-            return View();
-        }
+        #region Register
+        ////
+        //// GET: /Account/Register
+        //[AllowAnonymous]
+        //public ActionResult Register()
+        //{
+        //    return View();
+        //}
 
-        //
-        // POST: /Account/Register
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Register(RegisterViewModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-                var result = await UserManager.CreateAsync(user, model.Password);
-                if (result.Succeeded)
-                {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
-                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
-                    // Send an email with this link
-                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+        ////
+        //// POST: /Account/Register
+        //[HttpPost]
+        //[AllowAnonymous]
+        //[ValidateAntiForgeryToken]
+        //public async Task<ActionResult> Register(RegisterViewModel model)
+        //{
+        //    if (ModelState.IsValid)
+        //    {
+        //        var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+        //        var result = await UserManager.CreateAsync(user, model.Password);
+        //        if (result.Succeeded)
+        //        {
+        //            await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
 
-                    return RedirectToAction("Index", "Home");
-                }
-                AddErrors(result);
-            }
+        //            // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+        //            // Send an email with this link
+        //            // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+        //            // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+        //            // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
 
-            // If we got this far, something failed, redisplay form
-            return View(model);
-        }
+        //            return RedirectToAction("Index", "Home");
+        //        }
+        //        AddErrors(result);
+        //    }
 
-        //
-        // GET: /Account/ConfirmEmail
-        [AllowAnonymous]
-        public async Task<ActionResult> ConfirmEmail(string userId, string code)
-        {
-            if (userId == null || code == null)
-            {
-                return View("Error");
-            }
-            var result = await UserManager.ConfirmEmailAsync(userId, code);
-            return View(result.Succeeded ? "ConfirmEmail" : "Error");
-        }
+        //    // If we got this far, something failed, redisplay form
+        //    return View(model);
+        //}
 
-        //
-        // GET: /Account/ForgotPassword
-        [AllowAnonymous]
-        public ActionResult ForgotPassword()
-        {
-            return View();
-        }
+        ////
+        //// GET: /Account/ConfirmEmail
+        //[AllowAnonymous]
+        //public async Task<ActionResult> ConfirmEmail(string userId, string code)
+        //{
+        //    if (userId == null || code == null)
+        //    {
+        //        return View("Error");
+        //    }
+        //    var result = await UserManager.ConfirmEmailAsync(userId, code);
+        //    return View(result.Succeeded ? "ConfirmEmail" : "Error");
+        //}
+        #endregion
 
-        //
-        // POST: /Account/ForgotPassword
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ForgotPassword(ForgotPasswordViewModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                var user = await UserManager.FindByNameAsync(model.Email);
-                if (user == null || !(await UserManager.IsEmailConfirmedAsync(user.Id)))
-                {
-                    // Don't reveal that the user does not exist or is not confirmed
-                    return View("ForgotPasswordConfirmation");
-                }
+        #region ForgotPassword
+        ////
+        //// GET: /Account/ForgotPassword
+        //[AllowAnonymous]
+        //public ActionResult ForgotPassword()
+        //{
+        //    return View();
+        //}
 
-                // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
-                // Send an email with this link
-                // string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
-                // var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);		
-                // await UserManager.SendEmailAsync(user.Id, "Reset Password", "Please reset your password by clicking <a href=\"" + callbackUrl + "\">here</a>");
-                // return RedirectToAction("ForgotPasswordConfirmation", "Account");
-            }
+        //////
+        ////// POST: /Account/ForgotPassword
+        ////[HttpPost]
+        ////[AllowAnonymous]
+        ////[ValidateAntiForgeryToken]
+        ////public async Task<ActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        ////{
+        ////    if (ModelState.IsValid)
+        ////    {
+        ////        var user = await UserManager.FindByNameAsync(model.Email);
+        ////        if (user == null || !(await UserManager.IsEmailConfirmedAsync(user.Id)))
+        ////        {
+        ////            // Don't reveal that the user does not exist or is not confirmed
+        ////            return View("ForgotPasswordConfirmation");
+        ////        }
 
-            // If we got this far, something failed, redisplay form
-            return View(model);
-        }
+        ////        // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+        ////        // Send an email with this link
+        ////        // string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
+        ////        // var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);		
+        ////        // await UserManager.SendEmailAsync(user.Id, "Reset Password", "Please reset your password by clicking <a href=\"" + callbackUrl + "\">here</a>");
+        ////        // return RedirectToAction("ForgotPasswordConfirmation", "Account");
+        ////    }
 
-        //
-        // GET: /Account/ForgotPasswordConfirmation
-        [AllowAnonymous]
-        public ActionResult ForgotPasswordConfirmation()
-        {
-            return View();
-        }
+        ////    // If we got this far, something failed, redisplay form
+        ////    return View(model);
+        ////}
+
+        //////
+        ////// GET: /Account/ForgotPasswordConfirmation
+        ////[AllowAnonymous]
+        ////public ActionResult ForgotPasswordConfirmation()
+        ////{
+        ////    return View();
+        ////}
+        #endregion
 
         //
         // GET: /Account/ResetPassword
