@@ -1,9 +1,12 @@
 ﻿using Marcusca10.Samples.BuildingAccessNet.Web.Models;
 using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNet.Identity.Owin;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Web;
 using System.Web.Mvc;
 
@@ -12,14 +15,27 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
     [Authorize]
     public class TenantController : Controller
     {
+        private ApplicationSignInManager _signInManager;
         private ApplicationUserManager _userManager;
 
         public TenantController()
         { }
 
-        public TenantController(ApplicationUserManager userManager)
+        public TenantController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
         {
             UserManager = userManager;
+            SignInManager = signInManager;
+        }
+        public ApplicationSignInManager SignInManager
+        {
+            get
+            {
+                return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
+            }
+            private set
+            {
+                _signInManager = value;
+            }
         }
 
         public ApplicationUserManager UserManager
@@ -124,10 +140,16 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             {
                 model.Add(new ManageUserViewModel
                 {
-                    Id = new Guid(user.Id),
+                    Id = user.Id,
                     Email = user.Email,
-                    Name =  user.UserName
+                    Name = user.UserName
                 });
+            }
+
+            // DataReader already opened, need to add tenants separately
+            foreach (ManageUserViewModel user in model)
+            {
+                user.Tenant = GetUserTenant(user.Id);
             }
 
             return View(model);
@@ -145,27 +167,37 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         {
             try
             {
-                // TODO: Add insert logic here
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                var result = UserManager.Create(user);
+                if (result.Succeeded)
+                {
+                    // Add tenant claim
+                    UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), model.Tenant));
 
-                return RedirectToAction("ManageUser");
+                    return RedirectToAction("ManageUser");
+                }
+                AddErrors(result.Errors);
             }
-            catch
+            catch (Exception ex)
             {
-                return View(model);
+                AddErrors(ex.Message);
             }
+            return View(model);
         }
 
         // GET: Tenant/EditUser/5
-        public ActionResult EditUser(Guid id)
+        public ActionResult EditUser(string id)
         {
-            ApplicationUser user = UserManager.Users.FirstOrDefault(item => item.Id == id.ToString());
+            ApplicationUser user = UserManager.FindById(id.ToString());
+            ApplicationUser me = UserManager.FindById(User.Identity.GetUserId());
+
             ManageUserViewModel model = new ManageUserViewModel()
             {
-                Id = id,
+                Id = id.ToString(),
                 Email = user.Email,
                 Name = user.UserName,
-                Tenant = ""
-            };
+                Tenant = GetUserTenant(id)
+        };
 
             return View(model);
         }
@@ -182,17 +214,25 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             try
             {
                 // TODO: Add update logic here
+                ApplicationUser user = UserManager.FindById(id.ToString());
+                ApplicationUser me = UserManager.FindById(User.Identity.GetUserId());
+
+                user.Email = model.Email;
+                user.UserName = model.Name;
+
+                SetTenantClaim(user.Id, model.Tenant);
 
                 return RedirectToAction("ManageUser");
             }
-            catch
+            catch (Exception ex)
             {
-                return View(model);
+                AddErrors(ex.Message);
             }
+            return View(model);
         }
 
         // GET: Tenant/DeleteUser/5
-        public ActionResult DeleteUser(Guid id)
+        public ActionResult DeleteUser(string id)
         {
             ApplicationUser user = UserManager.Users.FirstOrDefault(item => item.Id == id.ToString());
             ManageUserViewModel model = new ManageUserViewModel()
@@ -200,7 +240,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 Id = id,
                 Email = user.Email,
                 Name = user.UserName,
-                Tenant = ""
+                Tenant =  GetUserTenant(id)
             };
 
             return View(model);
@@ -213,14 +253,64 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             try
             {
                 // TODO: Add delete logic here
-
+                UserManager.Delete(UserManager.Users.FirstOrDefault(item => item.Id == id.ToString()));
+                
                 return RedirectToAction("ManageUser");
             }
-            catch
+            catch (Exception ex)
             {
-                return View(model);
+                AddErrors(ex.Message);
             }
+            return View(model);
         }
         #endregion
+
+        #region Helper
+
+        private void AddErrors(string error)
+        {
+            AddErrors(new List<string>() { error });            
+        }
+
+        private void AddErrors(IEnumerable<string> errors)
+        {
+            foreach (var error in errors)
+            {
+                ModelState.AddModelError("", error);
+            }
+        }
+
+
+        string GetUserTenant(string id)
+        {
+            var tenantClaim = UserManager.GetClaims(id).Where(item => item.Type == ClaimNames.tenant.ToString());
+
+            if (tenantClaim.Count() > 0)
+                return tenantClaim.First().Value;
+            else
+                return "00000000-0000-0000-0000-0000000000000";
+        }
+
+        void SetTenantClaim(string id, string tenant)
+        {
+            var claims = UserManager.GetClaims(id);
+
+            Claim claim = claims.FirstOrDefault(item => item.Type == ClaimNames.tenant.ToString());
+            if (claim != null)
+            {
+                if (claim.Value != tenant)
+                {
+                    // Remove outdated tenant claim
+                    UserManager.RemoveClaim(id, claim);
+
+                    // Add new tenant claim
+                    UserManager.AddClaim(id, new Claim(ClaimNames.tenant.ToString(), tenant));
+                }
+            }
+            else throw new Exception("The tenant value is invalid.");
+        }
+
+        #endregion
+
     }
 }

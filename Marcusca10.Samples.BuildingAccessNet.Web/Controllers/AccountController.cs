@@ -388,6 +388,11 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 {
                     return View("ExternalLoginFailure");
                 }
+
+                // TODO: verifiy if the user was already provisioned
+                // check username (email) and tenant id
+
+                // Autoprovisioning is currently disabled
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
                 var result = await UserManager.CreateAsync(user);
                 if (result.Succeeded)
