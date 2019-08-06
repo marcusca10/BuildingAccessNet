@@ -15,4 +15,11 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
     {
         tenant
     }
+
+    public enum ErrorMessages
+    {
+        NotInTenant,
+        InvalidTenant,
+        InvalidChange
+    }
 }

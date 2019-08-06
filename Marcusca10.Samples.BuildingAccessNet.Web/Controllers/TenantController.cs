@@ -136,21 +136,33 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         {
             List<ManageUserViewModel> model = new List<ManageUserViewModel>();
 
-            foreach (ApplicationUser user in UserManager.Users)
+            string myTenant = GetUserTenant(User.Identity.GetUserId());
+            List<ApplicationUser> users;
+
+            // Owner: list all users
+            if (User.IsInRole(AppRoles.Owner.ToString()))
+                users = GetTenantUsers();
+            else
+                users = GetTenantUsers(myTenant);
+
+            foreach (ApplicationUser user in users)
             {
                 model.Add(new ManageUserViewModel
                 {
                     Id = user.Id,
                     Email = user.Email,
-                    Name = user.UserName
+                    Name = user.UserName,
+                    Tenant = myTenant
                 });
             }
 
+            // Owner: add the tenant information to the model
             // DataReader already opened, need to add tenants separately
-            foreach (ManageUserViewModel user in model)
-            {
-                user.Tenant = GetUserTenant(user.Id);
-            }
+            if (User.IsInRole(AppRoles.Owner.ToString()))
+                foreach (ManageUserViewModel user in model)
+                {
+                    user.Tenant = GetUserTenant(user.Id);
+                }
 
             return View(model);
         }
@@ -165,6 +177,9 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         [HttpPost]
         public ActionResult NewUser(ManageUserViewModel model)
         {
+            string myTenant = GetUserTenant(User.Identity.GetUserId());
+            // TODO: validate if new user mail/upn suffix matches the tenant
+
             try
             {
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
@@ -172,7 +187,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 if (result.Succeeded)
                 {
                     // Add tenant claim
-                    UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), model.Tenant));
+                    UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), myTenant));
 
                     return RedirectToAction("ManageUser");
                 }
@@ -188,23 +203,31 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         // GET: Tenant/EditUser/5
         public ActionResult EditUser(string id)
         {
-            ApplicationUser user = UserManager.FindById(id.ToString());
-            ApplicationUser me = UserManager.FindById(User.Identity.GetUserId());
-
-            ManageUserViewModel model = new ManageUserViewModel()
+            // Owner: only owner can edit any tenant
+            if (!User.IsInRole(AppRoles.Owner.ToString()) && GetUserTenant(User.Identity.GetUserId()) != GetUserTenant(id))
             {
-                Id = id.ToString(),
-                Email = user.Email,
-                Name = user.UserName,
-                Tenant = GetUserTenant(id)
-        };
+                AddErrors(ErrorMessages.NotInTenant.ToString());
+                return View();
+            }
+            else
+            {
+                ApplicationUser user = UserManager.FindById(id.ToString());
 
-            return View(model);
+                ManageUserViewModel model = new ManageUserViewModel()
+                {
+                    Id = id.ToString(),
+                    Email = user.Email,
+                    Name = user.UserName,
+                    Tenant = GetUserTenant(id)
+                };
+
+                return View(model);
+            }
         }
 
         // POST: Tenant/EditUser/5
         [HttpPost]
-        public ActionResult EditUser(Guid id, ManageUserViewModel model)
+        public ActionResult EditUser(string id, ManageUserViewModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -214,13 +237,26 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             try
             {
                 // TODO: Add update logic here
+
+                // Owner: only owner can edit any tenant
+                if (!User.IsInRole(AppRoles.Owner.ToString()) && GetUserTenant(User.Identity.GetUserId()) != GetUserTenant(id))
+                    throw new Exception(ErrorMessages.NotInTenant.ToString());
+
                 ApplicationUser user = UserManager.FindById(id.ToString());
-                ApplicationUser me = UserManager.FindById(User.Identity.GetUserId());
 
                 user.Email = model.Email;
                 user.UserName = model.Name;
+                UserManager.Update(user);
 
-                SetTenantClaim(user.Id, model.Tenant);
+                // Owner: validate if tenant was modified
+                if (model.Tenant != null)
+                {
+                    if (GetUserTenant(id) != model.Tenant.ToString())
+                        if (User.IsInRole(AppRoles.Owner.ToString()))
+                            SetTenantClaim(user.Id, model.Tenant);
+                        else
+                            throw new Exception(ErrorMessages.InvalidChange.ToString());
+                }
 
                 return RedirectToAction("ManageUser");
             }
@@ -234,26 +270,40 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         // GET: Tenant/DeleteUser/5
         public ActionResult DeleteUser(string id)
         {
-            ApplicationUser user = UserManager.Users.FirstOrDefault(item => item.Id == id.ToString());
-            ManageUserViewModel model = new ManageUserViewModel()
+            // Owner: only owner can delete from any tenant
+            if (!User.IsInRole(AppRoles.Owner.ToString()) && GetUserTenant(User.Identity.GetUserId()) != GetUserTenant(id))
             {
-                Id = id,
-                Email = user.Email,
-                Name = user.UserName,
-                Tenant =  GetUserTenant(id)
-            };
+                AddErrors(ErrorMessages.NotInTenant.ToString());
+                return View();
+            }
+            else
+            {
+                ApplicationUser user = UserManager.FindById(id);
+                ManageUserViewModel model = new ManageUserViewModel()
+                {
+                    Id = id,
+                    Email = user.Email,
+                    Name = user.UserName,
+                    Tenant = GetUserTenant(id)
+                };
 
-            return View(model);
+                return View(model);
+            }
         }
 
         // POST: Tenant/DeleteUser/5
         [HttpPost]
-        public ActionResult DeleteUser(Guid id, ManageUserViewModel model)
+        public ActionResult DeleteUser(string id, ManageUserViewModel model)
         {
             try
             {
                 // TODO: Add delete logic here
-                UserManager.Delete(UserManager.Users.FirstOrDefault(item => item.Id == id.ToString()));
+
+                // Owner: only owner can delete from any tenant
+                if (!User.IsInRole(AppRoles.Owner.ToString()) && GetUserTenant(User.Identity.GetUserId()) != GetUserTenant(id))
+                    throw new Exception(ErrorMessages.NotInTenant.ToString());
+
+                UserManager.Delete(UserManager.FindById(id));
                 
                 return RedirectToAction("ManageUser");
             }
@@ -291,6 +341,23 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 return "00000000-0000-0000-0000-0000000000000";
         }
 
+        List<ApplicationUser> GetTenantUsers()
+        {
+            return UserManager.Users.ToList();
+        }
+
+        List<ApplicationUser> GetTenantUsers(string tenant)
+        {
+            var users = UserManager.Users.Where(item =>
+                item.Claims.Where(t => 
+                    t.ClaimType == ClaimNames.tenant.ToString() & t.ClaimValue == tenant).Count() > 0);
+
+            if (users.Count() > 0)
+                return users.ToList();
+            else
+                return new List<ApplicationUser>();
+        }
+
         void SetTenantClaim(string id, string tenant)
         {
             var claims = UserManager.GetClaims(id);
@@ -307,7 +374,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     UserManager.AddClaim(id, new Claim(ClaimNames.tenant.ToString(), tenant));
                 }
             }
-            else throw new Exception("The tenant value is invalid.");
+            else throw new Exception(ErrorMessages.InvalidTenant.ToString());
         }
 
         #endregion
