@@ -12,7 +12,7 @@ using System.Web.Mvc;
 
 namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
 {
-    [Authorize]
+    [Authorize(Roles="Admin,Owner")]
     public class TenantController : Controller
     {
         private ApplicationSignInManager _signInManager;
