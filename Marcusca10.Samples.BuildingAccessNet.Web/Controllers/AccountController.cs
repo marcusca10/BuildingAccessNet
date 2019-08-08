@@ -10,6 +10,7 @@ using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using Marcusca10.Samples.BuildingAccessNet.Web.Models;
 using System.Web.UI.HtmlControls;
+using System.Collections.Generic;
 
 namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
 {
@@ -360,14 +361,33 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = false });
                 case SignInStatus.Failure:
                 default:
+                    // Get the information about the user from the external login provider
+                    var user = UserManager.FindByEmail(loginInfo.Login.ProviderKey);
+                    if (user != null)
+                    {
+                        // TODO: validate match between username (email) and tenant id
+                        var loginResult = await UserManager.AddLoginAsync(user.Id, loginInfo.Login);
+                        if (loginResult.Succeeded)
+                        {
+                            await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+                            return RedirectToLocal(returnUrl);
+                        }
+                        AddErrors(loginResult);
+                    }
+                    else
+                    {
+                        // Autoprovisioning is currently disabled
+                        AddErrors(ErrorMessages.NotProvisioned.ToString());
+                        // If the user does not have an account, then prompt the user to create an account
+                        //ViewBag.ReturnUrl = returnUrl;
+                        //ViewBag.LoginProvider = loginInfo.Login.LoginProvider;
+                        //return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = loginInfo.Email });
+                    }
                     return View("ExternalLoginFailure");
-                    //    // If the user does not have an account, then prompt the user to create an account
-                    //    ViewBag.ReturnUrl = returnUrl;
-                    //    ViewBag.LoginProvider = loginInfo.Login.LoginProvider;
-                    //    return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = loginInfo.Email });
             }
         }
 
+        // Autoprovisioning is currently disabled
         //
         // POST: /Account/ExternalLoginConfirmation
         [HttpPost]
@@ -388,11 +408,6 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 {
                     return View("ExternalLoginFailure");
                 }
-
-                // TODO: verifiy if the user was already provisioned
-                // check username (email) and tenant id
-
-                // Autoprovisioning is currently disabled
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
                 var result = await UserManager.CreateAsync(user);
                 if (result.Succeeded)
@@ -459,6 +474,11 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             {
                 return HttpContext.GetOwinContext().Authentication;
             }
+        }
+
+        private void AddErrors(string error)
+        {
+            ModelState.AddModelError("", error);
         }
 
         private void AddErrors(IdentityResult result)

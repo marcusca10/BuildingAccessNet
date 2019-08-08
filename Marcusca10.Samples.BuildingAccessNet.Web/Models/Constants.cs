@@ -18,6 +18,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
 
     public enum ErrorMessages
     {
+        NotProvisioned,
         NotInTenant,
         InvalidTenant,
         InvalidChange
