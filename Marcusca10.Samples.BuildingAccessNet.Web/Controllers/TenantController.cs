@@ -124,6 +124,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     // build ViewModel
                     model.Id = tenant.Id.ToString();
                     model.Name = tenant.Name;
+                    model.Caption = tenant.Caption;
                     model.MetadataAddress = tenant.MetadataAddress;
                     model.Realm = tenant.Realm;
                 }
