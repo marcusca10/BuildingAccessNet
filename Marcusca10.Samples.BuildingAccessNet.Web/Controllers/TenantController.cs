@@ -124,6 +124,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     // build ViewModel
                     model.Id = tenant.Id.ToString();
                     model.Name = tenant.Name;
+                    model.CallbackPath = Request.Url.GetLeftPart(UriPartial.Authority) + "/" + tenant.Name;
                     model.Caption = tenant.Caption;
                     model.MetadataAddress = tenant.MetadataAddress;
                     model.Realm = tenant.Realm;
@@ -136,18 +137,35 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
 
         // POST: Tenant/Edit/5
         [HttpPost]
-        public ActionResult Edit(int id, FormCollection collection)
+        public ActionResult Edit(string id, TenantEditViewModel model)
         {
             try
             {
                 // TODO: Add update logic here
+                string myTenant = GetUserTenant(User.Identity.GetUserId());
 
-                return RedirectToAction("Index");
+                if (User.IsInRole(AppRoles.Owner.ToString()) || myTenant == id)
+                {
+                    using (var db = new ApplicationDbContext())
+                    {
+                        Guid idGuid = Guid.Parse(id);
+                        var result = db.Tenants.SingleOrDefault(item => item.Id == idGuid);
+                        if (result != null)
+                        {
+                            result.Caption = model.Caption;
+                            result.Realm = model.Realm;
+                            result.MetadataAddress = model.MetadataAddress;
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                return View(model);
             }
-            catch
+            catch (Exception ex)
             {
-                return View();
+                AddErrors(ex.Message);
             }
+            return View(model);
         }
 
         // GET: Tenant/Delete/5

@@ -25,6 +25,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string CallbackPath { get; set; }
         public string Caption { get; set; }
         public string Realm { get; set; }
         public string MetadataAddress { get; set; }
