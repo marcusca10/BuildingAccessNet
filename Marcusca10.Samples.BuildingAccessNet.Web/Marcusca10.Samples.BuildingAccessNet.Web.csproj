@@ -281,6 +281,8 @@
     <Content Include="Views\Tenant\NewUser.cshtml" />
     <Content Include="Views\Tenant\DeleteUser.cshtml" />
     <Content Include="Views\Tenant\EditUser.cshtml" />
+    <Content Include="Views\Tenant\Index.cshtml" />
+    <Content Include="Views\Tenant\Edit.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
