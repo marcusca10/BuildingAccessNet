@@ -5,6 +5,7 @@ using Microsoft.AspNet.Identity.Owin;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Security.Claims;
 using System.Web;
@@ -54,13 +55,34 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         // GET: Tenant
         public ActionResult Index()
         {
-            return View();
-        }
+            List<TenantViewModel> model = new List<TenantViewModel>();
 
-        // GET: Tenant/Details/5
-        public ActionResult Details(int id)
-        {
-            return View();
+            using (var db = new ApplicationDbContext())
+            {
+                IEnumerable<TenantModel> tenants;
+
+                if (User.IsInRole(AppRoles.Owner.ToString()))
+                    tenants = db.Tenants;
+                else
+                {
+                    string myTenant = GetUserTenant(User.Identity.GetUserId());
+                    Guid idGuid = Guid.Parse(myTenant);
+                    tenants = db.Tenants.Where(item => item.Id == idGuid);
+                }
+
+                // build ViewModel
+                foreach (TenantModel tenant in tenants)
+                {
+                    model.Add(new TenantViewModel()
+                    {
+                        Id = tenant.Id.ToString(),
+                        Caption = tenant.Caption,
+                        Name = tenant.Name,
+                        Realm = tenant.Realm
+                    });
+                }
+            }
+            return View(model);
         }
 
         // GET: Tenant/Create
@@ -86,25 +108,71 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         }
 
         // GET: Tenant/Edit/5
-        public ActionResult Edit(int id)
+        public ActionResult Edit(string id)
         {
-            return View();
+            string myTenant = GetUserTenant(User.Identity.GetUserId());
+
+            if (User.IsInRole(AppRoles.Owner.ToString()) || myTenant == id)
+            {
+                TenantEditViewModel model = new TenantEditViewModel();
+                Guid idGuid = Guid.Parse(id);
+
+                using (var db = new ApplicationDbContext())
+                {
+                    var tenant = db.Tenants.FirstOrDefault(item => item.Id == idGuid);
+
+                    // build ViewModel
+                    model.Id = tenant.Id.ToString();
+                    model.Name = tenant.Name;
+                    model.CallbackPath = Request.Url.GetLeftPart(UriPartial.Authority) + "/" + tenant.Name;
+                    model.Caption = tenant.Caption;
+                    model.MetadataAddress = tenant.MetadataAddress;
+                    model.Realm = tenant.Realm;
+                }
+                return View(model);
+            }
+            else
+                return View("Error");
         }
 
         // POST: Tenant/Edit/5
         [HttpPost]
-        public ActionResult Edit(int id, FormCollection collection)
+        public ActionResult Edit(string id, TenantEditViewModel model)
         {
             try
             {
                 // TODO: Add update logic here
+                string myTenant = GetUserTenant(User.Identity.GetUserId());
 
-                return RedirectToAction("Index");
+                if (User.IsInRole(AppRoles.Owner.ToString()) || myTenant == id)
+                {
+                    using (var db = new ApplicationDbContext())
+                    {
+                        Guid idGuid = Guid.Parse(id);
+                        var result = db.Tenants.SingleOrDefault(item => item.Id == idGuid);
+                        if (result != null)
+                        {
+                            // validate if IDP configuration changed
+                            bool idpUpdate = (model.Realm != result.Realm | model.MetadataAddress != result.MetadataAddress);
+
+                            result.Caption = model.Caption;
+                            result.Realm = model.Realm;
+                            result.MetadataAddress = model.MetadataAddress;
+                            db.SaveChanges();
+
+                            // restart app if IDP configuration was changed
+                            if (idpUpdate)
+                                HttpRuntime.UnloadAppDomain();
+                        }
+                    }
+                }
+                return View(model);
             }
-            catch
+            catch (Exception ex)
             {
-                return View();
+                AddErrors(ex.Message);
             }
+            return View(model);
         }
 
         // GET: Tenant/Delete/5
@@ -338,7 +406,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             if (tenantClaim.Count() > 0)
                 return tenantClaim.First().Value;
             else
-                return "00000000-0000-0000-0000-0000000000000";
+                return "00000000-0000-0000-0000-000000000000";
         }
 
         List<ApplicationUser> GetTenantUsers()
