@@ -52,7 +52,7 @@
     <div class="form-group">
         @Html.LabelFor(model => model.MetadataAddress, htmlAttributes: new { @class = "control-label col-md-2" })
         <div class="col-md-10">
-            @Html.EditorFor(model => model.MetadataAddress, new { htmlAttributes = new { @class = "form-control" } })
+            @Html.EditorFor(model => model.MetadataAddress, new { htmlAttributes = new { @class = "form-control", @style = "max-width:none" } })
             @Html.ValidationMessageFor(model => model.MetadataAddress, "", new { @class = "text-danger" })
         </div>
     </div>
