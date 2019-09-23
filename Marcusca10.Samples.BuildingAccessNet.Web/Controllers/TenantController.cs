@@ -152,10 +152,17 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                         var result = db.Tenants.SingleOrDefault(item => item.Id == idGuid);
                         if (result != null)
                         {
+                            // validate if IDP configuration changed
+                            bool idpUpdate = (model.Realm != result.Realm | model.MetadataAddress != result.MetadataAddress);
+
                             result.Caption = model.Caption;
                             result.Realm = model.Realm;
                             result.MetadataAddress = model.MetadataAddress;
                             db.SaveChanges();
+
+                            // restart app if IDP configuration was changed
+                            if (idpUpdate)
+                                HttpRuntime.UnloadAppDomain();
                         }
                     }
                 }
