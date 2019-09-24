@@ -328,3 +328,4 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+/Marcusca10.Samples.BuildingAccessNet.Web/App_Data/whitelist.debug.xml
