@@ -173,6 +173,9 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 var result = await UserManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
+                    // add first user to Admin role
+                    await UserManager.AddToRoleAsync(user.Id, "Admin");
+
                     await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
 
                     // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
