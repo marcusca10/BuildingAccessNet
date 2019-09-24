@@ -75,14 +75,14 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 // Test for registered email address suffix for redirection
                 if (model != null)
                 {
-                    string mailSuffix = model.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '_');
+                    string mailSuffix = model.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '-');
                     var loginProviders = HttpContext.GetOwinContext().Authentication.GetExternalAuthenticationTypes();
                     var loginProvider = loginProviders.Where(item => item.Properties["AuthenticationType"].ToString() == mailSuffix);
 
 
                     if (loginProvider.Count() > 0)
                     {
-                        return ExternalLogin(mailSuffix, returnUrl);
+                        return ExternalLogin(model.Email, mailSuffix, returnUrl);
                     }
                 }
 
@@ -178,7 +178,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
 
                     // create tenant placeholder for first user
                     Guid tenantId = Guid.NewGuid();
-                    string domain = user.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '_');
+                    string domain = user.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '-');
                     using (var db = new ApplicationDbContext())
                     {
                         var tenant = new TenantModel()
@@ -315,10 +315,10 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public ActionResult ExternalLogin(string provider, string returnUrl)
+        public ActionResult ExternalLogin(string nameid, string provider, string returnUrl)
         {
             // Request a redirect to the external login provider
-            return new ChallengeResult(provider, Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl }));
+            return new ChallengeResult(provider, Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl }), nameid);
         }
 
         //
