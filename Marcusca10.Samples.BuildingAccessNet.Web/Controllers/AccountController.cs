@@ -176,6 +176,21 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     // add first user to Admin role
                     await UserManager.AddToRoleAsync(user.Id, "Admin");
 
+                    // create tenant placeholder for first user
+                    Guid tenantId = Guid.NewGuid();
+                    string domain = user.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '_');
+                    using (var db = new ApplicationDbContext())
+                    {
+                        var tenant = new TenantModel()
+                        {
+                            Id = tenantId,
+                            Name = domain
+                        };
+                        db.Tenants.Add(tenant);
+                        await db.SaveChangesAsync();
+                    }
+                    UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), tenantId.ToString()));
+
                     await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
 
                     // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
