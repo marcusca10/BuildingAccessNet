@@ -67,6 +67,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]
+        [UserWhitelist]
         public string Email { get; set; }
 
         [Required]

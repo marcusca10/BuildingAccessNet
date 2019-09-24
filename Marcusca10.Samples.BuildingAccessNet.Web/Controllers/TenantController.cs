@@ -85,27 +85,27 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
             return View(model);
         }
 
-        // GET: Tenant/Create
-        public ActionResult Create()
-        {
-            return View();
-        }
+        //// GET: Tenant/Create
+        //public ActionResult Create()
+        //{
+        //    return View();
+        //}
 
-        // POST: Tenant/Create
-        [HttpPost]
-        public ActionResult Create(FormCollection collection)
-        {
-            try
-            {
-                // TODO: Add insert logic here
+        //// POST: Tenant/Create
+        //[HttpPost]
+        //public ActionResult Create(FormCollection collection)
+        //{
+        //    try
+        //    {
+        //        // TODO: Add insert logic here
 
-                return RedirectToAction("Index");
-            }
-            catch
-            {
-                return View();
-            }
-        }
+        //        return RedirectToAction("Index");
+        //    }
+        //    catch
+        //    {
+        //        return View();
+        //    }
+        //}
 
         // GET: Tenant/Edit/5
         public ActionResult Edit(string id)
@@ -124,7 +124,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     // build ViewModel
                     model.Id = tenant.Id.ToString();
                     model.Name = tenant.Name;
-                    model.CallbackPath = Request.Url.GetLeftPart(UriPartial.Authority) + "/" + tenant.Name;
+                    model.CallbackPath = Request.Url.GetLeftPart(UriPartial.Authority) + "/signin-" + tenant.Name;
                     model.Caption = tenant.Caption;
                     model.MetadataAddress = tenant.MetadataAddress;
                     model.Realm = tenant.Realm;
@@ -166,7 +166,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                         }
                     }
                 }
-                return View(model);
+                return RedirectToAction("Index");
             }
             catch (Exception ex)
             {

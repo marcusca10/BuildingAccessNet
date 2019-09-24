@@ -8,6 +8,7 @@ using Owin;
 using Marcusca10.Samples.BuildingAccessNet.Web.Models;
 using Microsoft.Owin.Security.WsFederation;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Marcusca10.Samples.BuildingAccessNet.Web
 {
@@ -50,10 +51,10 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web
 
 
 
-            // Get list of whitelisted tenants
+            // Get list of configured tenants
             using (var db = new ApplicationDbContext())
             {
-                var tenants = db.Tenants;
+                var tenants = db.Tenants.Where(item => item.MetadataAddress != null);
 
                 // Enable login to multiple WS-Fed providers
                 foreach (TenantModel tenant in tenants)

@@ -75,14 +75,14 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 // Test for registered email address suffix for redirection
                 if (model != null)
                 {
-                    string mailSuffix = model.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '_');
+                    string mailSuffix = model.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '-');
                     var loginProviders = HttpContext.GetOwinContext().Authentication.GetExternalAuthenticationTypes();
                     var loginProvider = loginProviders.Where(item => item.Properties["AuthenticationType"].ToString() == mailSuffix);
 
 
-                    if (loginProvider.Count() > 0)
+                    if (loginProvider.Count() > 0 && model.Email != GetTenantOwner(mailSuffix))
                     {
-                        return ExternalLogin(mailSuffix, returnUrl);
+                        return ExternalLogin(model.Email, mailSuffix, returnUrl);
                     }
                 }
 
@@ -152,43 +152,62 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         }
 
         #region Register
-        ////
-        //// GET: /Account/Register
-        //[AllowAnonymous]
-        //public ActionResult Register()
-        //{
-        //    return View();
-        //}
+        //
+        // GET: /Account/Register
+        [AllowAnonymous]
+        public ActionResult Register()
+        {
+            return View();
+        }
 
-        ////
-        //// POST: /Account/Register
-        //[HttpPost]
-        //[AllowAnonymous]
-        //[ValidateAntiForgeryToken]
-        //public async Task<ActionResult> Register(RegisterViewModel model)
-        //{
-        //    if (ModelState.IsValid)
-        //    {
-        //        var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-        //        var result = await UserManager.CreateAsync(user, model.Password);
-        //        if (result.Succeeded)
-        //        {
-        //            await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
+        //
+        // POST: /Account/Register
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Register(RegisterViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                var result = await UserManager.CreateAsync(user, model.Password);
+                if (result.Succeeded)
+                {
+                    // add first user to Admin role
+                    await UserManager.AddToRoleAsync(user.Id, "Admin");
 
-        //            // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
-        //            // Send an email with this link
-        //            // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-        //            // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-        //            // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+                    // create tenant placeholder for first user
+                    Guid tenantId = Guid.NewGuid();
+                    string domain = user.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '-');
+                    using (var db = new ApplicationDbContext())
+                    {
+                        var tenant = new TenantModel()
+                        {
+                            Id = tenantId,
+                            Name = domain,
+                            Owner = user.Email
+                        };
+                        db.Tenants.Add(tenant);
+                        await db.SaveChangesAsync();
+                    }
+                    UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), tenantId.ToString()));
 
-        //            return RedirectToAction("Index", "Home");
-        //        }
-        //        AddErrors(result);
-        //    }
+                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
 
-        //    // If we got this far, something failed, redisplay form
-        //    return View(model);
-        //}
+                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+                    // Send an email with this link
+                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+
+                    return RedirectToAction("Index", "Home");
+                }
+                AddErrors(result);
+            }
+
+            // If we got this far, something failed, redisplay form
+            return View(model);
+        }
 
         ////
         //// GET: /Account/ConfirmEmail
@@ -297,10 +316,10 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public ActionResult ExternalLogin(string provider, string returnUrl)
+        public ActionResult ExternalLogin(string nameid, string provider, string returnUrl)
         {
             // Request a redirect to the external login provider
-            return new ChallengeResult(provider, Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl }));
+            return new ChallengeResult(provider, Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl }), nameid);
         }
 
         //
@@ -496,6 +515,17 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 return Redirect(returnUrl);
             }
             return RedirectToAction("Index", "Home");
+        }
+
+        public string GetTenantOwner(string name)
+        {
+            string owner;
+            using (var db = new ApplicationDbContext())
+            {
+                var tenant = db.Tenants.FirstOrDefault(item => item.Name == name);
+                owner = tenant != null ? tenant.Owner : string.Empty;
+            }
+            return owner;
         }
 
         internal class ChallengeResult : HttpUnauthorizedResult
