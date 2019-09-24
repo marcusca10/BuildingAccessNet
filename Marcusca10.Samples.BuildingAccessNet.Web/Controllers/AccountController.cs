@@ -80,7 +80,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                     var loginProvider = loginProviders.Where(item => item.Properties["AuthenticationType"].ToString() == mailSuffix);
 
 
-                    if (loginProvider.Count() > 0)
+                    if (loginProvider.Count() > 0 && model.Email != GetTenantOwner(mailSuffix))
                     {
                         return ExternalLogin(model.Email, mailSuffix, returnUrl);
                     }
@@ -184,7 +184,8 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                         var tenant = new TenantModel()
                         {
                             Id = tenantId,
-                            Name = domain
+                            Name = domain,
+                            Owner = user.Email
                         };
                         db.Tenants.Add(tenant);
                         await db.SaveChangesAsync();
@@ -514,6 +515,17 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                 return Redirect(returnUrl);
             }
             return RedirectToAction("Index", "Home");
+        }
+
+        public string GetTenantOwner(string name)
+        {
+            string owner;
+            using (var db = new ApplicationDbContext())
+            {
+                var tenant = db.Tenants.FirstOrDefault(item => item.Name == name);
+                owner = tenant != null ? tenant.Owner : string.Empty;
+            }
+            return owner;
         }
 
         internal class ChallengeResult : HttpUnauthorizedResult
