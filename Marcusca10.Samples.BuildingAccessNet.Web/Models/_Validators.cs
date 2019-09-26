@@ -35,7 +35,13 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
         {
             //open the whitelist xml file  
             XmlDocument doc = new XmlDocument();
-            string whitelist = HostingEnvironment.IsDevelopmentEnvironment ? "whitelist.debug.xml" : "whitelist.xml";
+
+#if DEBUG
+            string whitelist = "whitelist.debug.xml";
+#else
+            string whitelist = "whitelist.xml";
+#endif
+
             doc.Load(HostingEnvironment.MapPath("~/App_Data/" + whitelist));
 
             XmlNode user = doc.SelectSingleNode(@"/users[user='" + email.ToLower() + "']");
