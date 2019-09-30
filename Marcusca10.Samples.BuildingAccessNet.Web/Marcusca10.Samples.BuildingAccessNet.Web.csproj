@@ -206,10 +206,6 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\201909300517356_Update-Database.cs" />
-    <Compile Include="Migrations\201909300517356_Update-Database.Designer.cs">
-      <DependentUpon>201909300517356_Update-Database.cs</DependentUpon>
-    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\AccountViewModels.cs" />
     <Compile Include="Models\ApplicationDbContext.cs" />
@@ -294,11 +290,6 @@
     <Content Include="Views\Tenant\EditUser.cshtml" />
     <Content Include="Views\Tenant\Index.cshtml" />
     <Content Include="Views\Tenant\Edit.cshtml" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Migrations\201909300517356_Update-Database.resx">
-      <DependentUpon>201909300517356_Update-Database.cs</DependentUpon>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Content Include="fonts\glyphicons-halflings-regular.woff2" />
