@@ -9,7 +9,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Migrations
     {
         public Configuration()
         {
-            AutomaticMigrationsEnabled = true;
+            AutomaticMigrationsEnabled = false;
         }
 
         protected override void Seed(Marcusca10.Samples.BuildingAccessNet.Web.Models.ApplicationDbContext context)
