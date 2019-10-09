@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Hosting;
@@ -35,10 +36,18 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
         {
             //open the whitelist xml file  
             XmlDocument doc = new XmlDocument();
-            string whitelist = HostingEnvironment.IsDevelopmentEnvironment ? "whitelist.debug.xml" : "whitelist.xml";
-            doc.Load(HostingEnvironment.MapPath("~/App_Data/" + whitelist));
 
-            XmlNode user = doc.SelectSingleNode(@"/users[user='" + email.ToLower() + "']");
+#if DEBUG
+            string whitelist = HostingEnvironment.MapPath("~/App_Data/whitelist.debug.xml");
+#else
+            string whitelist = HostingEnvironment.MapPath("~/App_Data/whitelist.xml");
+#endif
+
+            XmlNode user = null;
+            if (File.Exists(whitelist)) {
+                doc.Load(whitelist);
+                user = doc.SelectSingleNode(@"/users[user='" + email.ToLower() + "']");
+            }
 
             return (user != null);
         }
