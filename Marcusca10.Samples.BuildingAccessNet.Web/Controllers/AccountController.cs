@@ -157,7 +157,16 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         [AllowAnonymous]
         public ActionResult Register()
         {
-            return View();
+            ServiceParametersModel serviceParameters;
+            using (var db = new ApplicationDbContext())
+            {
+                serviceParameters = db.ServiceParameters.FirstOrDefault(p => p.Id == new Guid("b49f7c30-6e94-410f-a748-4972a39e9f71"));
+            }
+
+            if (serviceParameters.EnableRegistration)
+                return View();
+            else
+                return new HttpNotFoundResult();
         }
 
         //
@@ -167,46 +176,72 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Register(RegisterViewModel model)
         {
-            if (ModelState.IsValid)
+            ServiceParametersModel serviceParameters;
+            using (var db = new ApplicationDbContext())
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-                var result = await UserManager.CreateAsync(user, model.Password);
-                if (result.Succeeded)
-                {
-                    // add first user to Admin role
-                    await UserManager.AddToRoleAsync(user.Id, "Admin");
-
-                    // create tenant placeholder for first user
-                    Guid tenantId = Guid.NewGuid();
-                    string domain = user.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '-');
-                    using (var db = new ApplicationDbContext())
-                    {
-                        var tenant = new TenantModel()
-                        {
-                            Id = tenantId,
-                            Name = domain,
-                            Owner = user.Email
-                        };
-                        db.Tenants.Add(tenant);
-                        await db.SaveChangesAsync();
-                    }
-                    UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), tenantId.ToString()));
-
-                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
-
-                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
-                    // Send an email with this link
-                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
-
-                    return RedirectToAction("Index", "Home");
-                }
-                AddErrors(result);
+                serviceParameters = db.ServiceParameters.FirstOrDefault(p => p.Id == new Guid("b49f7c30-6e94-410f-a748-4972a39e9f71"));
             }
+            if (serviceParameters.EnableRegistration)
+            {
+                if (ModelState.IsValid)
+                {
+                    var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                    var result = await UserManager.CreateAsync(user, model.Password);
+                    if (result.Succeeded)
+                    {
+                        if (serviceParameters.IsFirstRun)
+                        {
+                            // add first user to Owner role
+                            await UserManager.AddToRoleAsync(user.Id, "Admin");
+                            // set first run to false
+                            using (var db = new ApplicationDbContext())
+                            {
+                                serviceParameters = db.ServiceParameters.FirstOrDefault(p => p.Id == new Guid("b49f7c30-6e94-410f-a748-4972a39e9f71"));
+                                serviceParameters.IsFirstRun = false;
+                                await db.SaveChangesAsync();
+                            }
+                        }
+                        else
+                        {
+                            // add first tenant user to Admin role
+                            await UserManager.AddToRoleAsync(user.Id, "Admin");
 
-            // If we got this far, something failed, redisplay form
-            return View(model);
+                            // create tenant placeholder for first user
+                            Guid tenantId = Guid.NewGuid();
+                            string domain = user.Email.Substring(model.Email.IndexOf('@') + 1).Replace('.', '-');
+                            using (var db = new ApplicationDbContext())
+                            {
+                                var tenant = new TenantModel()
+                                {
+                                    Id = tenantId,
+                                    Name = domain,
+                                    Owner = user.Email
+                                };
+                                db.Tenants.Add(tenant);
+                                await db.SaveChangesAsync();
+                            }
+                            UserManager.AddClaim(user.Id, new Claim(ClaimNames.tenant.ToString(), tenantId.ToString()));
+
+                        }
+
+                        await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
+                        // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+                        // Send an email with this link
+                        // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+                        // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                        // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+
+                        return RedirectToAction("Index", "Home");
+                    }
+                    AddErrors(result);
+                }
+
+                // If we got this far, something failed, redisplay form
+                return View(model);
+            }
+            else
+                return new HttpNotFoundResult();
         }
 
         ////

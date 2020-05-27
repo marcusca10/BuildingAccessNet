@@ -44,12 +44,15 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
 #endif
 
             XmlNode user = null;
-            if (File.Exists(whitelist)) {
+            if (File.Exists(whitelist))
+            {
                 doc.Load(whitelist);
                 user = doc.SelectSingleNode(@"/users[user='" + email.ToLower() + "']");
-            }
 
-            return (user != null);
+                return (user != null);
+            }
+            else
+                return true;
         }
     }
 }
