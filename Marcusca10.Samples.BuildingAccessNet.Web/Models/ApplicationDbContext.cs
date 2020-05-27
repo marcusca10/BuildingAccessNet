@@ -20,5 +20,6 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Models
         }
 
         public virtual DbSet<TenantModel> Tenants { get; set; }
+        public virtual DbSet<ServiceParametersModel> ServiceParameters { get; set; }
     }
 }
