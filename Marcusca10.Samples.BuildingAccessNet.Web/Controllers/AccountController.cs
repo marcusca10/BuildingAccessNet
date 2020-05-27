@@ -192,7 +192,7 @@ namespace Marcusca10.Samples.BuildingAccessNet.Web.Controllers
                         if (serviceParameters.IsFirstRun)
                         {
                             // add first user to Owner role
-                            await UserManager.AddToRoleAsync(user.Id, "Admin");
+                            await UserManager.AddToRoleAsync(user.Id, "Owner");
                             // set first run to false
                             using (var db = new ApplicationDbContext())
                             {
